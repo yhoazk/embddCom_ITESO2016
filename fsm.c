@@ -176,8 +176,8 @@ unsigned int getRndSeed(void){
     //
     // Use the first word of the resulting digest as the random number seed.
     //
-    return(ui32A + 0x67452301); 
-    
+    return(ui32A + 0x67452301);
+
 }
 
 
@@ -330,16 +330,16 @@ int main(){
     printf("%x\n", getRndSeed());
     RandomAddEntropy(getRndSeed());
     printf("%x\n", getRndSeed());
-    
+
     printf("Testing FSM\n");
 
     printf("Testing CYPH Orig Data %s\n", dataCyph);
     vfnCyph(3, dataCyph, keyCyph);
     printf("Testing CYPH     Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
-    
+
     vfnDeCyph(3, dataCyph, keyCyph);
     printf("Testing DECYPH   Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
-    
+
 /*
     while(state != SEND){
     input = getchar();
