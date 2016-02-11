@@ -56,7 +56,7 @@ UARTIntHandler(void)
         // Read the next character from the UART and write it back to the UART.
         ROM_UARTCharPutNonBlocking(UART0_BASE, '-');
         //ROM_UARTCharPutNonBlocking(UART0_BASE, 'p');
-        ROM_UARTCharGetNonBlocking(UART0_BASE); //cosume the char in the buffer
+        ui32receivedByte = ROM_UARTCharGetNonBlocking(UART0_BASE); //cosume the char in the buffer
 
         // Blink the LED to show a character transfer is occuring.
         GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
@@ -110,6 +110,7 @@ typedef enum STATES_t{
     SEND_ACC_SR,
     SEND_CRC,
     SEND_RND_SEED,
+    SEND_ACC_KEY_VER_REQ,
     SEND_CALC_KEY,
     SEND
 }STATES;
@@ -121,39 +122,46 @@ STATES ui32TxReqSecSeed(void){
         default:
         case SEND_HEADER:
             nextState = SEND_ECU_ID;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x82);
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x82);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'a');
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             //UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
             break;
         case SEND_ECU_ID:
             nextState = SEND_TST_ID;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, ECU_ID);
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, ECU_ID);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'b');
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             break;
         case SEND_TST_ID:
             nextState = SEND_ACC_RSID;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, TESTER_ID);
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, TESTER_ID);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'c');
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             break;
         case SEND_ACC_RSID:
             nextState = SEND_ACC_SR;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x27);
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x27);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'd');
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             break;
         case SEND_ACC_SR:
             nextState = SEND_CRC;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x01);
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x01);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'e');
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             break;
         case SEND_CRC:
             nextState = SEND_HEADER;
-            ROM_UARTCharPutNonBlocking(UART0_BASE, 0xdb);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 'f');
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0xdb);
             SysCtlDelay(SysCtlClockGet() / (1000 * 1));
             break;
     }
     currentState = nextState;
     return currentState;
 }
+
 /* FSM processing the response  */
 STATES ui32RxSecSeedProv(unsigned char ubMessage){
     static STATES currentState = CHECK_IF_HEADER;
@@ -165,6 +173,64 @@ STATES ui32RxSecSeedProv(unsigned char ubMessage){
 STATES ui32TxReqAuthSecKey(void){
     static STATES currentState = CHECK_IF_HEADER;
     static STATES nextState = IDLE;
+    static unsigned int byteCntr = 0;
+    switch(currentState){
+        default:
+        case SEND_HEADER:
+            byteCntr = 0;
+            nextState = SEND_ECU_ID;
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x83);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '0');
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            //UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            break;
+        case SEND_ECU_ID:
+            nextState = SEND_TST_ID;
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, ECU_ID);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '1');
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_TST_ID:
+            nextState = SEND_ACC_RSID;
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, TESTER_ID);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '2');
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_ACC_RSID:
+            nextState = SEND_ACC_KEY_VER_REQ;
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x27);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '3');
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_ACC_KEY_VER_REQ:
+            nextState = SEND_CALC_KEY;
+            byteCntr = 8;
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0x02);
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '4');
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_CALC_KEY:
+            if(byteCntr-- > 0){
+                    nextState = SEND_CALC_KEY;
+                    //byteCntr--;
+                    ROM_UARTCharPutNonBlocking(UART0_BASE, 'x');
+                    SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            }
+            else{
+                nextState = SEND_CRC;
+            }
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0xdb);
+            break;
+        case SEND_CRC:
+            nextState = SEND_HEADER;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, '.');
+            // ROM_UARTCharPutNonBlocking(UART0_BASE, 0xdb);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+
+    }
+    currentState = nextState;
+    return currentState;
 }
 
 /* FSM processing the response  */
@@ -284,9 +350,32 @@ main(void)
 
     // Loop forever echoing data through the UART.
     /* FSM for X27 */
-
+    int msgLen = 0;
     while(1)
     {
         //ui32TxReqSecSeed();
+        if (ui32receivedByte == '1'){
+            // call the fnc the number of bytes to send
+            if(msgLen == 0){
+                msgLen = 6;
+            } else if(msgLen == 1){
+                ui32receivedByte = 0;
+            }
+            ui32TxReqSecSeed();
+            msgLen--;
+
+        }
+        else if (ui32receivedByte == '2') {
+            // call the fnc the number of bytes to send
+            if(msgLen == 0){
+                msgLen = 15;
+            } else if(msgLen == 1){
+                ui32receivedByte = 0;
+            }
+            ui32TxReqAuthSecKey();
+            msgLen--;
+        }
+
+        
     }
 }
