@@ -24,6 +24,8 @@
 
 #define ECU_ID (0x60)
 #define TESTER_ID (0xF0)
+volatile unsigned int ui32receivedByte = 0; // flag to let know that a new byte
+                                            // has arrived
 //*****************************************************************************
 // The error routine that is called if the driver library encounters an error.
 //*****************************************************************************
@@ -52,8 +54,9 @@ UARTIntHandler(void)
     while(ROM_UARTCharsAvail(UART0_BASE))
     {
         // Read the next character from the UART and write it back to the UART.
-        ROM_UARTCharPutNonBlocking(UART0_BASE,
-                                   ROM_UARTCharGetNonBlocking(UART0_BASE));
+        ROM_UARTCharPutNonBlocking(UART0_BASE, '-');
+        //ROM_UARTCharPutNonBlocking(UART0_BASE, 'p');
+        ROM_UARTCharGetNonBlocking(UART0_BASE); //cosume the char in the buffer
 
         // Blink the LED to show a character transfer is occuring.
         GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
@@ -73,13 +76,171 @@ UARTIntHandler(void)
 void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
 {
     // Loop while there are more characters to send.
+    // char k = 'k';
     while(ulCount--)
     {
         // Write the next character to the UART.
-        ROM_UARTCharPutNonBlocking(UART0_BASE, (*pucBuffer)+1);
-        pucBuffer++;
+        //ROM_UARTCharPutNonBlocking(UART0_BASE, k);
+        //ROM_UARTCharPutNonBlocking(UART0_BASE, (*pucBuffer)+1);
+        ROM_UARTCharPutNonBlocking(UART0_BASE, *pucBuffer++);
+        //pucBuffer++;
     }
 }
+
+//****************************************************************************
+// My FSM
+// add a state to send the request to authenticate also by secquence
+// OR initate the request as soon as the device is ready
+//****************************************************************************
+typedef enum STATES_t{
+    IDLE = 'A',
+    CHECK_IF_HEADER,
+    HEADER_FORMAT,
+    HEADER_TGT,
+    HEADER_SRC,
+    CHECK_IF_SID,
+    GET_DATA_BYTES,
+    GET_KEY,
+    CHECK_SUM,
+    WAIT_5MS,
+    SEND_HEADER,
+    SEND_ECU_ID,
+    SEND_TST_ID,
+    SEND_ACC_RSID,
+    SEND_ACC_SR,
+    SEND_CRC,
+    SEND_RND_SEED,
+    SEND_CALC_KEY,
+    SEND
+}STATES;
+/* FSM request for seed */
+STATES ui32TxReqSecSeed(void){
+    static STATES currentState = CHECK_IF_HEADER;
+    static STATES nextState = IDLE;
+    switch(currentState){
+        default:
+        case SEND_HEADER:
+            nextState = SEND_ECU_ID;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x82);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            //UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            break;
+        case SEND_ECU_ID:
+            nextState = SEND_TST_ID;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, ECU_ID);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_TST_ID:
+            nextState = SEND_ACC_RSID;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, TESTER_ID);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_ACC_RSID:
+            nextState = SEND_ACC_SR;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x27);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_ACC_SR:
+            nextState = SEND_CRC;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 0x01);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+        case SEND_CRC:
+            nextState = SEND_HEADER;
+            ROM_UARTCharPutNonBlocking(UART0_BASE, 0xdb);
+            SysCtlDelay(SysCtlClockGet() / (1000 * 1));
+            break;
+    }
+    currentState = nextState;
+    return currentState;
+}
+/* FSM processing the response  */
+STATES ui32RxSecSeedProv(unsigned char ubMessage){
+    static STATES currentState = CHECK_IF_HEADER;
+    static STATES nextState = IDLE;
+
+}
+
+/* FSM processing the response  */
+STATES ui32TxReqAuthSecKey(void){
+    static STATES currentState = CHECK_IF_HEADER;
+    static STATES nextState = IDLE;
+}
+
+/* FSM processing the response  */
+STATES ui32RxAccGrnt(unsigned char ubMessage){
+    static STATES currentState = CHECK_IF_HEADER;
+    static STATES nextState = IDLE;
+}
+
+/* super fsm to control the other fsms */
+STATES ui32x27ProcessFSM( unsigned char ubMessage){
+    static STATES currentState = CHECK_IF_HEADER;
+    static STATES nextState = IDLE;
+
+    switch(currentState){
+        default:
+        case CHECK_IF_HEADER:
+            if(ubMessage == 82){
+                nextState = HEADER_FORMAT;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            else{
+                //printf("Idle\n");
+            }
+            break;
+        case HEADER_FORMAT:
+            if(ubMessage == ECU_ID){
+                nextState = HEADER_TGT;
+                UARTSend((unsigned char *)"\033[2JECU_ID Correct\n", 18);
+            }
+            break;
+        case HEADER_TGT:
+            if(ubMessage == TESTER_ID){
+                nextState = HEADER_SRC;
+                UARTSend((unsigned char *)"\033[2JTESTER_ID Correct\n", 18);
+            }
+            break;
+        case HEADER_SRC:
+            if(ubMessage == 27){
+                nextState = CHECK_IF_SID;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            break;
+        case CHECK_IF_SID:
+            if(ubMessage == 1){
+                nextState = CHECK_SUM;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            break;
+        case GET_DATA_BYTES:
+            if(ubMessage == 82){
+                nextState = HEADER_FORMAT;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            break;
+        case GET_KEY:
+            if(ubMessage == 82){
+                nextState = HEADER_FORMAT;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            break;
+        case CHECK_SUM:
+            if(ubMessage == 82){
+                nextState = SEND;
+                UARTSend((unsigned char *)"\033[2JHeader Correct\n", 18);
+            }
+            break;
+        case WAIT_5MS:
+            break;
+        case SEND:
+            break;
+    }
+    currentState = nextState;
+    return currentState;
+}
+
+
 
 //*****************************************************************************
 // This example demonstrates how to send a string of data to the UART.
@@ -87,12 +248,6 @@ void UARTSend(const unsigned char *pucBuffer, unsigned long ulCount)
 int
 main(void)
 {
-    // Enable lazy stacking for interrupt handlers.  This allows floating-point
-    // instructions to be used within interrupt handlers, but at the expense of
-    // extra stack usage.
-    ROM_FPUEnable();
-    ROM_FPULazyStackingEnable();
-
     // Set the clocking to run directly from the crystal.
     ROM_SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
                        SYSCTL_XTAL_16MHZ);
@@ -125,10 +280,13 @@ main(void)
     ROM_UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT);
 
     // Prompt for text to be entered.
-    UARTSend((unsigned char *)"\033[2JEnter text: ", 16);
+    UARTSend((unsigned char *)"\033[2JAutenticate:", 16);
 
     // Loop forever echoing data through the UART.
+    /* FSM for X27 */
+
     while(1)
     {
+        //ui32TxReqSecSeed();
     }
 }

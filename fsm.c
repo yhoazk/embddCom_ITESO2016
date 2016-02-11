@@ -81,7 +81,33 @@ void Descifrar(unsigned int num_rounds, unsigned int v[2], unsigned int const k[
 /** Crypto stuff start **/
 
 /** CRC stuff start **/
+static unsigned char crc_table[256];
+static int initd_table = 0;
+#ifndef DI
+#define DI 0x07
+#endif
 
+#ifndef GP
+#define GP 0x107
+#endif
+void init_crc8(){
+    int i,j;
+    unsigned char crc;
+    for (i = 0; i < 256; i++) {
+        crc = i;
+        for (j = 0; j < 8; j++) {
+            crc = (crc << 1) ^ ((crc & 0x80)? DI: 0);
+        }
+        crc_table[i] = crc & 0xff;
+    }
+}
+
+/* TODO: optimize to use 4 byte data type*/
+void crc8(unsigned char *crc, unsigned char m) {
+    /* code */
+    *crc = crc_table[(*crc) ^ m];
+    *crc &= 0xff;
+}
 
 /** CRC stuff start **/
 
@@ -331,14 +357,25 @@ int main(){
     RandomAddEntropy(getRndSeed());
     printf("%x\n", getRndSeed());
 
-    printf("Testing FSM\n");
+    printf("Testing FSM --\n");
+
+/* TEST CRC*/
+    unsigned char loc_crc =0;
+    init_crc8();
+    crc8(&loc_crc, 0x82);
+    crc8(&loc_crc, 0x40);
+    crc8(&loc_crc, 0xf1);
+    crc8(&loc_crc, 0x27);
+    crc8(&loc_crc, 0x01); //debe ser 0xdb
+
+    printf("Testing CRC %x\n", loc_crc);
 
     printf("Testing CYPH Orig Data %s\n", dataCyph);
-    vfnCyph(3, dataCyph, keyCyph);
-    printf("Testing CYPH     Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
+//    vfnCyph(3, dataCyph, keyCyph);
+//    printf("Testing CYPH     Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
 
-    vfnDeCyph(3, dataCyph, keyCyph);
-    printf("Testing DECYPH   Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
+//    vfnDeCyph(3, dataCyph, keyCyph);
+//    printf("Testing DECYPH   Data %x %x %x %x %x %x %x %x\n", dataCyph[0], dataCyph[1],dataCyph[2],dataCyph[3],dataCyph[4],dataCyph[5],dataCyph[6],dataCyph[7]);
 
 /*
     while(state != SEND){
