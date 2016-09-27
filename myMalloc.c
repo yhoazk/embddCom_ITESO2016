@@ -45,7 +45,7 @@ int memInit(int* start, int size){
 
 int is4bAligned(int* addrs){
     int r = 0;
-    if (((int)addrs & 0x03) == 0){
+    if ((addrs != 0)&&(((int)addrs & 0x03) == 0)){
         r = 1;
     }
     return r;
@@ -54,21 +54,70 @@ int is4bAligned(int* addrs){
 int main(void){
     printf("wrk");
     printf("Result: %d\n", vfnInit(&myAlloc));
-    printf("Result: %x\n", is4bAligned(myMalloc(0x04)));
-    printf("Result: %x\n", is4bAligned(myMalloc(0x08)));
-    printf("Result: %x\n", is4bAligned(myMalloc(0x0c)));
-    printf("Result: %x\n", is4bAligned(myMalloc(65432)));
-    printf("Result: %x\n", is4bAligned(myMalloc(64)));
-    printf("Result: %x\n", is4bAligned(myMalloc(66)));
-    printf("Result: %x\n", is4bAligned(myMalloc(67)));
-    printf("Result: %x\n", is4bAligned(myMalloc(64)));
-    printf("Result: %x\n", is4bAligned(myMalloc(4)));
-    printf("Result: %x\n", is4bAligned(myMalloc(5)));
-    printf("Result: %x\n", is4bAligned(myMalloc(68)));
-    printf("Result: %x\n", is4bAligned(myMalloc(136)));
-    printf("Result: %x\n", is4bAligned(myMalloc(77)));
-    printf("Result: %x\n", is4bAligned(myMalloc(89)));
-    printf("Result: %x\n", is4bAligned(myMalloc(1)));
-    printf("Result: %x\n", is4bAligned(myMalloc(9)));
+    int   x = 0xffff;
+    int accptd = 0;
+
+    accptd = is4bAligned(myMalloc(0x04));
+    x -= (accptd)? 0x04:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,0x04,x);
+    accptd = is4bAligned(myMalloc(0x08));
+    x -= (accptd)? 0x08:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,0x08,x);
+    accptd = is4bAligned(myMalloc(0x0c));
+    x -= (accptd)? 0x0c:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,0x0c,x);
+
+    accptd = is4bAligned(myMalloc(65432));
+    x -= (accptd)? 65432:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,65432,x);
+
+    accptd = is4bAligned(myMalloc(64));
+    x -= (accptd)? 64:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,64,x);
+
+    accptd = is4bAligned(myMalloc(66));
+    x -= (accptd)? 66:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,66,x);
+
+    accptd = is4bAligned(myMalloc(67));
+    x -= (accptd)? 67:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,67,x);
+
+    accptd = is4bAligned(myMalloc(64));
+    x -= (accptd)? 64:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,64,x);
+
+    accptd = is4bAligned(myMalloc(4));
+    x -= (accptd)? 4:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,4,x);
+
+    accptd = is4bAligned(myMalloc(5));
+    x -= (accptd)? 5:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,5,x);
+
+    accptd = is4bAligned(myMalloc(68));
+    x -= (accptd)? 68:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,68,x);
+
+    accptd = is4bAligned(myMalloc(136));
+    x -= (accptd)? 136:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,136,x);
+
+    accptd = is4bAligned(myMalloc(77));
+    x -= (accptd)? 77:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,77,x);
+
+    accptd = is4bAligned(myMalloc(89));
+    x -= (accptd)? 89:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,89,x);
+
+    accptd = is4bAligned(myMalloc(1));
+    x -= (accptd)? 1:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,1,x);
+
+    accptd = is4bAligned(myMalloc(9));
+    x -= (accptd)? 9:0;
+    printf("Result: %x Rq: %d Rem: %d\n", accptd,9,x);
+
     return 0;
 }
